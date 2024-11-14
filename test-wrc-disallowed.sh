@@ -61,7 +61,7 @@ if [ ! -d "$TARGET_DIR" ] ; then
   mkdir $TARGET_DIR
 fi
 
-nvcc -I. -rdc=true -arch sm_80 runner.cu kernels/wrc-disallowed.cu -o "$TARGET_DIR/wrc-disallowed-runner"
+nvcc -arch sm_80 kernels/wrc-disallowed.cu -o "$TARGET_DIR/wrc-disallowed-runner"
 
 iter=0
 
@@ -70,20 +70,20 @@ do
   echo "Iteration: $iter"
   random_config 1024 256
   res=$(./$TARGET_DIR/wrc-disallowed-runner -s $PARAM_FILE -t $PARAMS_DIR/2-loc.txt)
-  local weak_behaviors=$(echo "$res" | tail -n 1 | sed 's/.*of weak behaviors: \(.*\)$/\1/')
-  local total_behaviors=$(echo "$res" | tail -n 2 | head -n 1 | sed 's/.*Total behaviors: \(.*\)$/\1/')
-  local weak_rate=$(echo "$res" | tail -n 3 | head -n 1 | sed 's/.*rate: \(.*\) per second/\1/')
+  weak_behaviors=$(echo "$res" | tail -n 1 | sed 's/.*of weak behaviors: \(.*\)$/\1/')
+  total_behaviors=$(echo "$res" | tail -n 2 | head -n 1 | sed 's/.*Total behaviors: \(.*\)$/\1/')
+  weak_rate=$(echo "$res" | tail -n 3 | head -n 1 | sed 's/.*rate: \(.*\) per second/\1/')
 
   echo "  Test wrc-disallowed weak: $weak_behaviors, total: $total_behaviors, rate: $weak_rate per second"
 
   if (( $(echo "$weak_rate > 0" | bc -l) )); then
-    local test_result_dir="$RESULT_DIR/wrc-disallowed"
+    test_result_dir="$RESULT_DIR/wrc-disallowed"
     if [ ! -d "$test_result_dir" ] ; then
       mkdir "$test_result_dir"
       cp $PARAM_FILE "$test_result_dir"
       echo $weak_rate > "$test_result_dir/rate"
     else
-      local max_rate=$(cat "$test_result_dir/rate")
+      max_rate=$(cat "$test_result_dir/rate")
       if (( $(echo "$weak_rate > $max_rate" | bc -l) )); then
         cp $PARAM_FILE "$test_result_dir"
         echo $weak_rate > "$test_result_dir/rate"
