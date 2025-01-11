@@ -67,7 +67,7 @@ __device__ uint permute_id(uint id, uint factor, uint mask) {
 }
 
 __device__ uint stripe_workgroup(uint workgroup_id, uint local_id, uint testing_workgroups) {
-  return (workgroup_id + 1 + local_id % (testing_workgroups - 1)) % testing_workgroups;
+  return (workgroup_id + 1) % testing_workgroups;
 }
 
 __device__ void spin(cuda::atomic<uint, cuda::thread_scope_device>* barrier, uint limit) {
@@ -133,7 +133,9 @@ __global__ void litmus_test(
     uint id_0 = shuffled_workgroup * blockDim.x + threadIdx.x;
     uint new_workgroup = stripe_workgroup(shuffled_workgroup, threadIdx.x, kernel_params->testing_workgroups);
     uint id_1 = new_workgroup * blockDim.x + threadIdx.x;
-    uint id_2 = new_workgroup * blockDim.x + permute_id(threadIdx.x, kernel_params->permute_thread, blockDim.x);
+    uint new_workgroup1 = stripe_workgroup(new_workgroup, threadIdx.x, kernel_params->testing_workgroups);
+    //uint id_2 = new_workgroup * blockDim.x + permute_id(threadIdx.x, kernel_params->permute_thread, blockDim.x);
+    uint id_2 = new_workgroup1 * blockDim.x + threadIdx.x;
 
     // defined for all three thread two memory locations tests
     uint x_0 =  id_0 * kernel_params->mem_stride * 2;
@@ -158,20 +160,19 @@ __global__ void litmus_test(
       spin(barrier, blockDim.x * kernel_params->testing_workgroups);
     }
 
-
     if (id_0 != id_1 && id_1 != id_2 && id_0 != id_2) {
 
       // Thread 0
       test_locations[x_0].store(1, cuda::memory_order_relaxed);
 
       // Thread 1
-      uint r0 = test_locations[x_1].load(cuda::memory_order_relaxed);
-      cuda::atomic_thread_fence(cuda::memory_order_acq_rel, cuda::thread_scope_block);
+      uint r0 = test_locations[x_1].load(cuda::memory_order_acquire);
+      //cuda::atomic_thread_fence(cuda::memory_order_acq_rel, cuda::thread_scope_device);
       test_locations[y_1].store(1, cuda::memory_order_relaxed);
 
       // Thread 2
-      uint r1 = test_locations[y_2].load(cuda::memory_order_relaxed);
-      cuda::atomic_thread_fence(cuda::memory_order_acq_rel, cuda::thread_scope_block);
+      uint r1 = test_locations[y_2].load(cuda::memory_order_acquire);
+      //cuda::atomic_thread_fence(cuda::memory_order_acq_rel, cuda::thread_scope_device);
       uint r2 = test_locations[x_2].load(cuda::memory_order_relaxed);
 
       cuda::atomic_thread_fence(cuda::memory_order_seq_cst);
@@ -470,7 +471,7 @@ void run(StressParams stressParams, TestParams testParams, bool print_results) {
   cudaMalloc(&d_testInstances, testInstancesSize);
 
   int weakSize = sizeof(bool) * testingThreads;
-  bool* h_weak = (bool*)mallo(weakSize);
+  bool* h_weak = (bool*)malloc(weakSize);
   bool* d_weak;
   cudaMalloc(&d_weak, weakSize);
 
@@ -511,10 +512,10 @@ void run(StressParams stressParams, TestParams testParams, bool print_results) {
       std::cout << "Iteration " << i << "\n";
       for (uint i = 0; i < testingThreads; i++) {
         if (h_weak[i]) {
-          std:cout << "Weak result " << i << "\n";
-          std:cout << "  t0: " << h_testInstances[i].t0;
-          std:cout << " t1: " << h_testInstances[i].t1;
-          std:cout << " t2: " << h_testInstances[i].t2 << "\n";
+          std::cout << "Weak result " << i << "\n";
+          std::cout << "  t0: " << h_testInstances[i].t0;
+          std::cout << " t1: " << h_testInstances[i].t1;
+          std::cout << " t2: " << h_testInstances[i].t2 << "\n";
           std::cout << "  x: " << h_testInstances[i].x;
           std::cout << " y: " << h_testInstances[i].y << "\n";
         }

@@ -28,7 +28,7 @@ function random_config() {
   local workgroupSizeLimiter=$2
 
   echo "testIterations=200" > $PARAM_FILE
-  local testingWorkgroups=$(random_between 2 $workgroupLimiter)
+  local testingWorkgroups=$(random_between 4 $workgroupLimiter)
   echo "testingWorkgroups=$testingWorkgroups" >> $PARAM_FILE
   local maxWorkgroups=$(random_between $testingWorkgroups $workgroupLimiter)
   echo "maxWorkgroups=$maxWorkgroups" >> $PARAM_FILE
@@ -37,7 +37,7 @@ function random_config() {
   echo "workgroupSize=$workgroupSize" >> $PARAM_FILE
   echo "shufflePct=$(random_between 0 100)" >> $PARAM_FILE
   echo "barrierPct=$(random_between 0 100)" >> $PARAM_FILE
-  local stressLineSize=$(echo "$(random_between 2 10)^2" | bc)
+  local stressLineSize=$(( $(random_between 2 10) ** 2 ))
   echo "stressLineSize=$stressLineSize" >> $PARAM_FILE
   local stressTargetLines=$(random_between 1 16)
   echo "stressTargetLines=$stressTargetLines" >> $PARAM_FILE
@@ -61,7 +61,7 @@ if [ ! -d "$TARGET_DIR" ] ; then
   mkdir $TARGET_DIR
 fi
 
-nvcc -arch sm_80 kernels/wrc-disallowed.cu -o "$TARGET_DIR/wrc-disallowed-runner"
+nvcc -arch sm_87 kernels/wrc-disallowed.cu -o "$TARGET_DIR/wrc-disallowed-runner"
 
 iter=0
 
@@ -76,7 +76,7 @@ do
 
   echo "  Test wrc-disallowed weak: $weak_behaviors, total: $total_behaviors, rate: $weak_rate per second"
 
-  if (( $(echo "$weak_rate > 0" | bc -l) )); then
+  if awk "BEGIN {exit !($weak_rate > 0)}"; then
     test_result_dir="$RESULT_DIR/wrc-disallowed"
     if [ ! -d "$test_result_dir" ] ; then
       mkdir "$test_result_dir"
@@ -84,7 +84,7 @@ do
       echo $weak_rate > "$test_result_dir/rate"
     else
       max_rate=$(cat "$test_result_dir/rate")
-      if (( $(echo "$weak_rate > $max_rate" | bc -l) )); then
+      if awk "BEGIN {exit !($weak_rate > $max_rate)}"; then
         cp $PARAM_FILE "$test_result_dir"
         echo $weak_rate > "$test_result_dir/rate"
       fi
