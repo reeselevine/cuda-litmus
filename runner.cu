@@ -189,7 +189,7 @@ void run(StressParams stressParams, TestParams testParams, bool print_results) {
   int testingThreads = stressParams.workgroupSize * stressParams.testingWorkgroups;
 
   int testLocSize = testingThreads * testParams.numMemLocations * stressParams.memStride * sizeof(uint);
-  d_atomic_uint* testLocations;
+  d_uint_type* testLocations;
   cudaMalloc(&testLocations, testLocSize);
 
   int readResultsSize = sizeof(ReadResults) * testingThreads;
@@ -243,7 +243,7 @@ void run(StressParams stressParams, TestParams testParams, bool print_results) {
     int numWorkgroups = setBetween(stressParams.testingWorkgroups, stressParams.maxWorkgroups);
 
     // clear memory
-    cudaMemset(testLocations, 0, testLocSize);
+    cudaMemset((void *)testLocations, 0, testLocSize);
     cudaMemset(d_testResults, 0, sizeof(TestResults));
     cudaMemset(readResults, 0, readResultsSize);
     cudaMemset(barrier, 0, barrierSize);
@@ -296,7 +296,7 @@ void run(StressParams stressParams, TestParams testParams, bool print_results) {
   std::cout << "Number of weak behaviors: " << weakBehaviors << "\n";
 
   // Free memory
-  cudaFree(testLocations);
+  cudaFree((void *)testLocations);
   cudaFree(readResults);
   cudaFree(d_testResults);
   free(h_testResults);

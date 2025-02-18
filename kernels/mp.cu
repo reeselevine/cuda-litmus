@@ -4,12 +4,12 @@
 
 #ifdef VOLATILE
     #define STORE_X() test_locations[x_0] = 1;
-    #define STORE_Y() test_locations[x_0] = 1;
+    #define STORE_Y() test_locations[y_0] = 1;
     #define LOAD_Y() uint r0 = test_locations[y_1];
     #define LOAD_X() uint r1 = test_locations[x_1];
 #elif defined(RMW)
     #define STORE_X() atomicAdd(&test_locations[x_0], 1);
-    #define STORE_Y() atomicExch(&test_locations[x_0], 1);
+    #define STORE_Y() atomicExch(&test_locations[y_0], 1);
     #define LOAD_Y() uint r0 = atomicCAS(&test_locations[y_1], 1, 0);
     #define LOAD_X() uint r1 = atomicAdd(&test_locations[x_1], 0);
 #endif

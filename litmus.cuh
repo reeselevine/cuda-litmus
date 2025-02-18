@@ -8,7 +8,7 @@
 #ifdef VOLATILE 
 typedef volatile uint d_uint_type;
 #elif defined(RMW)
-typedef uint d_atomic_uint;
+typedef uint d_uint_type;
 #endif
 
 #define PRE_STRESS() \
