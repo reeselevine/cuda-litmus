@@ -1,4 +1,0 @@
-paper-example 4-loc.txt
-DEFAULT
-DEFAULT
-DEFAULT

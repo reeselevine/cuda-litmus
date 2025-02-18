@@ -1,2 +1,0 @@
-read-rel-sys 2-loc.txt TB_0_1 SCOPE_SYSTEM NO_FENCE RELEASE
-read-rel-sys-and-cta 2-loc.txt TB_0_1 SCOPE_SYSTEM NO_FENCE RELEASE
