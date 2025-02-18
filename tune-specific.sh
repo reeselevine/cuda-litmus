@@ -4,8 +4,8 @@
 
 PARAM_FILE="params.txt"
 RESULT_DIR="results"
-SHADER_DIR="kernels"
-PARAMS_DIR="params"
+SHADER_FILE="kernels/mp.cu"
+TEST_PARAMS_FILE="params/2-loc.txt"
 TARGET_DIR="target"
 
 function make_even() {
@@ -57,21 +57,16 @@ function random_config() {
 }
 
 function run_test() {
-  local test=$1
-  local tb=$2
-  local scope=$3
-  local fence_scope=$4
-  local variant=$5
-  local params=$6
-  res=$(./$TARGET_DIR/$test-$tb-$scope-$fence_scope-$variant-runner -s $PARAM_FILE -t $PARAMS_DIR/$params)
+  local variant=$1
+  res=$(./$TARGET_DIR/mp-$variant-runner -s $PARAM_FILE -t $TEST_PARAMS_FILE)
   local weak_behaviors=$(echo "$res" | tail -n 1 | sed 's/.*of weak behaviors: \(.*\)$/\1/')
   local total_behaviors=$(echo "$res" | tail -n 2 | head -n 1 | sed 's/.*Total behaviors: \(.*\)$/\1/')
   local weak_rate=$(echo "$res" | tail -n 3 | head -n 1 | sed 's/.*rate: \(.*\) per second/\1/')
 
-  echo "  Test $test-$tb-$scope-$fence_scope-$variant weak: $weak_behaviors, total: $total_behaviors, rate: $weak_rate per second"
+  echo "  Test mp-$variant weak: $weak_behaviors, total: $total_behaviors, rate: $weak_rate per second"
 
   if awk "BEGIN {exit !($weak_rate > 0)}"; then
-    local test_result_dir="$RESULT_DIR/$test-$tb-$scope-$fence_scope-$variant"
+    local test_result_dir="$RESULT_DIR/mp-$variant"
     if [ ! -d "$test_result_dir" ] ; then
       mkdir "$test_result_dir"
       cp $PARAM_FILE "$test_result_dir"
@@ -112,14 +107,10 @@ readarray tests < $tuning_file
 if "$compile"; then
 for test in "${tests[@]}"; do
   set -- $test
-  test_name=$1
-  tb=$3
-  scope=$4
-  f_scope=$5
-  variant=$6
+  variant=$1
   
-  echo "Compiling $test_name-$tb-$scope-NO_FENCE-$variant runner"
-  nvcc -D$tb -D$scope -D$f_scope -D$variant -I. -rdc=true -arch sm_80 runner.cu "kernels/$test_name.cu" -o "$TARGET_DIR/$test_name-$tb-$scope-$f_scope-$variant-runner"
+  echo "Compiling mp-$variant runner"
+  nvcc -D$variant -I. -rdc=true -arch sm_80 runner.cu "kernels/mp.cu" -o "$TARGET_DIR/mp-$variant-runner"
 done
 fi
 
@@ -131,14 +122,8 @@ do
   random_config 1024 256
   for test in "${tests[@]}"; do
     set -- $test
-    test_name=$1
-    test_params=$2
-    tb=$3
-    scope=$4
-    f_scope=$5
-    variant=$6
-
-    run_test $test_name $tb $scope $f_scope $variant $test_params
+    variant=$1
+    run_test $variant 
   done
   iter=$((iter + 1))
 done
