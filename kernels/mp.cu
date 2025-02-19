@@ -4,13 +4,17 @@
 
 #ifdef VOLATILE
     #define STORE_X() test_locations[x_0] = 1;
+    #define FENCE_0() __threadfence();
     #define STORE_Y() test_locations[y_0] = 1;
     #define LOAD_Y() uint r0 = test_locations[y_1];
+    #define FENCE_1() __threadfence_block();
     #define LOAD_X() uint r1 = test_locations[x_1];
 #elif defined(RMW)
     #define STORE_X() atomicAdd(&test_locations[x_0], 1);
+    #define FENCE_0() __threadfence_block();
     #define STORE_Y() atomicExch(&test_locations[y_0], 1);
     #define LOAD_Y() uint r0 = atomicCAS(&test_locations[y_1], 1, 0);
+    #define FENCE_1() __threadfence_block();
     #define LOAD_X() uint r1 = atomicAdd(&test_locations[x_1], 0);
 #endif
 
@@ -44,11 +48,11 @@ __global__ void litmus_test(
     if (id_0 != id_1) {
 
       STORE_X()
-      __threadfence_block();
+      FENCE_0()
       STORE_Y()
 
       LOAD_Y()
-      __threadfence_block();
+      FENCE_1()
       LOAD_X()
 
       cuda::atomic_thread_fence(cuda::memory_order_seq_cst);
