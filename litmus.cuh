@@ -5,26 +5,6 @@
 #include <cuda_runtime.h>
 #include <cuda/atomic>
 
-#ifdef SCOPE_DEVICE
-typedef cuda::atomic<uint, cuda::thread_scope_device> d_atomic_uint;
-#elif defined(SCOPE_BLOCK)
-typedef cuda::atomic<uint, cuda::thread_scope_block> d_atomic_uint;
-#elif defined(SCOPE_SYSTEM)
-typedef cuda::atomic<uint, cuda::thread_scope_system> d_atomic_uint;
-#else
-typedef cuda::atomic<uint> d_atomic_uint; // default, which is system too
-#endif
-
-#ifdef FENCE_SCOPE_BLOCK
-#define FENCE_SCOPE cuda::thread_scope_block
-#elif defined(FENCE_SCOPE_DEVICE)
-#define FENCE_SCOPE cuda::thread_scope_device
-#elif defined(FENCE_SCOPE_SYSTEM)
-#define FENCE_SCOPE cuda::thread_scope_system
-#else
-#define FENCE_SCOPE cuda::thread_scope_system
-#endif
-
 #ifdef TB_0_1_2
 #define DEFINE_IDS()                                                                                           \
   uint total_ids = blockDim.x * kernel_params->testing_workgroups; \
@@ -376,7 +356,7 @@ typedef struct {
 } KernelParams;
 
 __global__ void litmus_test(
-  d_atomic_uint* test_locations,
+  uint* test_locations,
   ReadResults* read_results,
   uint* shuffled_workgroups,
   cuda::atomic<uint, cuda::thread_scope_device>* barrier,
@@ -386,7 +366,7 @@ __global__ void litmus_test(
   TestInstance* test_instances);
 
 __global__ void check_results(
-  d_atomic_uint* test_locations,
+  uint* test_locations,
   ReadResults* read_results,
   TestResults* test_results,
   KernelParams* kernel_params,

@@ -3,7 +3,7 @@
 #include "functions.cu"
 
 __global__ void litmus_test(
-  d_atomic_uint* test_locations,
+  uint* test_locations,
   ReadResults* read_results,
   uint* shuffled_workgroups,
   cuda::atomic<uint, cuda::thread_scope_device>* barrier,
@@ -15,68 +15,42 @@ __global__ void litmus_test(
   uint shuffled_workgroup = shuffled_workgroups[blockIdx.x];
   if (shuffled_workgroup < kernel_params->testing_workgroups) {
 
-#ifdef ACQUIRE
+#ifdef RELAXED
+    cuda::memory_order thread_1_load = cuda::memory_order_relaxed;
+    cuda::memory_order thread_1_store = cuda::memory_order_relaxed;
+    cuda::memory_order thread_2_load = cuda::memory_order_relaxed;
+#elif defined(ACQUIRE)
     cuda::memory_order thread_1_load = cuda::memory_order_acquire;
     cuda::memory_order thread_1_store = cuda::memory_order_relaxed;
     cuda::memory_order thread_2_load = cuda::memory_order_acquire;
-    #define FENCE_1()
-    #define FENCE_2()
-#elif defined(ACQ_REL)
-    cuda::memory_order thread_1_load = cuda::memory_order_acquire;
-    cuda::memory_order thread_1_store = cuda::memory_order_release;
-    cuda::memory_order thread_2_load = cuda::memory_order_acquire;
-    #define FENCE_1()
-    #define FENCE_2()
 #elif defined(RELEASE)
     cuda::memory_order thread_1_load = cuda::memory_order_relaxed;
     cuda::memory_order thread_1_store = cuda::memory_order_release;
     cuda::memory_order thread_2_load = cuda::memory_order_acquire;
-    #define FENCE_1()
-    #define FENCE_2()
-#elif defined(RELAXED)
-    cuda::memory_order thread_1_load = cuda::memory_order_relaxed;
-    cuda::memory_order thread_1_store = cuda::memory_order_relaxed;
-    cuda::memory_order thread_2_load = cuda::memory_order_relaxed;
-    #define FENCE_1()
-    #define FENCE_2()
-#elif defined(BOTH_FENCE)
-    cuda::memory_order thread_1_load = cuda::memory_order_relaxed;
-    cuda::memory_order thread_1_store = cuda::memory_order_relaxed;
-    cuda::memory_order thread_2_load = cuda::memory_order_relaxed;
-    #define FENCE_1() cuda::atomic_thread_fence(cuda::memory_order_acq_rel, FENCE_SCOPE);
-    #define FENCE_2() cuda::atomic_thread_fence(cuda::memory_order_acq_rel, FENCE_SCOPE);
-#elif defined(THREAD_1_FENCE)
-    cuda::memory_order thread_1_load = cuda::memory_order_relaxed;
-    cuda::memory_order thread_1_store = cuda::memory_order_relaxed;
-    cuda::memory_order thread_2_load = cuda::memory_order_acquire;
-    #define FENCE_1() cuda::atomic_thread_fence(cuda::memory_order_acq_rel, FENCE_SCOPE);
-    #define FENCE_2()
-#elif defined(THREAD_2_FENCE_ACQ)
-    cuda::memory_order thread_1_load = cuda::memory_order_acquire;
-    cuda::memory_order thread_1_store = cuda::memory_order_relaxed;
-    cuda::memory_order thread_2_load = cuda::memory_order_relaxed;
-    #define FENCE_1()
-    #define FENCE_2() cuda::atomic_thread_fence(cuda::memory_order_acq_rel, FENCE_SCOPE);
-#elif defined(THREAD_2_FENCE_REL)
-    cuda::memory_order thread_1_load = cuda::memory_order_relaxed;
-    cuda::memory_order thread_1_store = cuda::memory_order_release;
-    cuda::memory_order thread_2_load = cuda::memory_order_relaxed;
-    #define FENCE_1()
-    #define FENCE_2() cuda::atomic_thread_fence(cuda::memory_order_acq_rel, FENCE_SCOPE);
-#else
-    cuda::memory_order thread_1_load = cuda::memory_order_relaxed; // default to all relaxed
-    cuda::memory_order thread_1_store = cuda::memory_order_relaxed;
-    cuda::memory_order thread_2_load = cuda::memory_order_relaxed;
-    #define FENCE_1()
-    #define FENCE_2()
 #endif
 
-#ifdef THREAD_0_STORE_RELEASE
-    cuda::memory_order thread_0_store = cuda::memory_order_release;
-#else
-    cuda::memory_order thread_0_store = cuda::memory_order_relaxed;
-#endif
+#ifdef TB_012
+#define X_0_SCOPE cuda::thread_scope_block
+#define X_1_SCOPE cuda::thread_scope_block
+#define Y_1_SCOPE cuda::thread_scope_block
+#define X_2_SCOPE cuda::thread_scope_block
+#define Y_2_SCOPE cuda::thread_scope_block
 
+#elif defined(TB_0_12)
+#define X_0_SCOPE cuda::thread_scope_device
+#define X_1_SCOPE cuda::thread_scope_device
+#define Y_1_SCOPE cuda::thread_scope_block
+#define X_2_SCOPE cuda::thread_scope_device
+#define Y_2_SCOPE cuda::thread_scope_block
+
+#else
+#define X_0_SCOPE cuda::thread_scope_device
+#define X_1_SCOPE cuda::thread_scope_device
+#define Y_1_SCOPE cuda::thread_scope_device
+#define X_2_SCOPE cuda::thread_scope_device
+#define Y_2_SCOPE cuda::thread_scope_device
+
+#endif
 
     // defined for different distributions of threads across threadblocks
     DEFINE_IDS();
@@ -84,22 +58,26 @@ __global__ void litmus_test(
     // defined for all three thread two memory locations tests
     THREE_THREAD_TWO_MEM_LOCATIONS();
 
+    cuda::atomic<uint, X_0_SCOPE>* x_0_ptr = (cuda::atomic<uint, X_0_SCOPE>*) &test_locations[x_0];
+    cuda::atomic<uint, X_1_SCOPE>* x_1_ptr = (cuda::atomic<uint, X_1_SCOPE>*) &test_locations[x_1];
+    cuda::atomic<uint, Y_1_SCOPE>* y_1_ptr = (cuda::atomic<uint, Y_1_SCOPE>*) &test_locations[y_1];
+    cuda::atomic<uint, X_2_SCOPE>* x_2_ptr = (cuda::atomic<uint, X_2_SCOPE>*) &test_locations[x_2];
+    cuda::atomic<uint, Y_2_SCOPE>* y_2_ptr = (cuda::atomic<uint, Y_2_SCOPE>*) &test_locations[y_2];
+
     PRE_STRESS();
 
     if (id_0 != id_1 && id_1 != id_2 && id_0 != id_2) {
 
       // Thread 0
-      test_locations[x_0].store(1, thread_0_store);
+      x_0_ptr->store(1, cuda::memory_order_relaxed);
 
       // Thread 1
-      uint r0 = test_locations[x_1].load(thread_1_load);
-      FENCE_1()
-      test_locations[y_1].store(1, thread_1_store);
+      uint r0 = x_1_ptr->load(thread_1_load);
+      y_1_ptr->store(1, thread_1_store);
 
       // Thread 2
-      uint r1 = test_locations[y_2].load(thread_2_load);
-      FENCE_2()
-      uint r2 = test_locations[x_2].load(cuda::memory_order_relaxed);
+      uint r1 = y_2_ptr->load(thread_2_load);
+      uint r2 = x_2_ptr->load(cuda::memory_order_relaxed);
 
       cuda::atomic_thread_fence(cuda::memory_order_seq_cst);
       read_results[wg_offset + id_1].r0 = r0;
@@ -112,7 +90,7 @@ __global__ void litmus_test(
 }
 
 __global__ void check_results(
-  d_atomic_uint* test_locations,
+  uint* test_locations,
   ReadResults* read_results,
   TestResults* test_results,
   KernelParams* kernel_params,

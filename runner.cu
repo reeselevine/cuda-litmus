@@ -189,7 +189,7 @@ void run(StressParams stressParams, TestParams testParams, bool print_results) {
   int testingThreads = stressParams.workgroupSize * stressParams.testingWorkgroups;
 
   int testLocSize = testingThreads * testParams.numMemLocations * stressParams.memStride * sizeof(uint);
-  d_atomic_uint* testLocations;
+  uint* testLocations;
   cudaMalloc(&testLocations, testLocSize);
 
   int readResultsSize = sizeof(ReadResults) * testingThreads;

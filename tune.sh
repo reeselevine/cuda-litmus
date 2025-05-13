@@ -59,19 +59,17 @@ function random_config() {
 function run_test() {
   local test=$1
   local tb=$2
-  local scope=$3
-  local fence_scope=$4
-  local variant=$5
-  local params=$6
-  res=$(./$TARGET_DIR/$test-$tb-$scope-$fence_scope-$variant-runner -s $PARAM_FILE -t $PARAMS_DIR/$params)
+  local variant=$3
+  local params=$4
+  res=$(./$TARGET_DIR/$test-$tb-$variant-runner -s $PARAM_FILE -t $PARAMS_DIR/$params)
   local weak_behaviors=$(echo "$res" | tail -n 1 | sed 's/.*of weak behaviors: \(.*\)$/\1/')
   local total_behaviors=$(echo "$res" | tail -n 2 | head -n 1 | sed 's/.*Total behaviors: \(.*\)$/\1/')
   local weak_rate=$(echo "$res" | tail -n 3 | head -n 1 | sed 's/.*rate: \(.*\) per second/\1/')
 
-  echo "  Test $test-$tb-$scope-$fence_scope-$variant weak: $weak_behaviors, total: $total_behaviors, rate: $weak_rate per second"
+  echo "  Test $test-$tb-$variant weak: $weak_behaviors, total: $total_behaviors, rate: $weak_rate per second"
 
   if (( $(echo "$weak_rate > 0" | bc -l) )); then
-    local test_result_dir="$RESULT_DIR/$test-$tb-$scope-$fence_scope-$variant"
+    local test_result_dir="$RESULT_DIR/$test-$tb-$variant"
     if [ ! -d "$test_result_dir" ] ; then
       mkdir "$test_result_dir"
       cp $PARAM_FILE "$test_result_dir"
@@ -84,7 +82,6 @@ function run_test() {
       fi
     fi
   fi
-
 }
 
 if [ $# -lt 1 ] ; then
@@ -113,32 +110,15 @@ if "$compile"; then
 for test_file in "${test_files[@]}"; do
   read -a test_info <<< "$(sed -n '1p' $test_file)"
   read -a threadblocks <<< "$(sed -n '2p' $test_file)"
-  read -a scopes <<< "$(sed -n '3p' $test_file)"
-  read -a variants <<< "$(sed -n '4p' $test_file)"
-
-  if [[ $(wc -l < $test_file) -ge 5 ]]; then
-    # Perform the command if the line count condition is met
-    read -a fence_scopes <<< "$(sed -n '5p' $test_file)"
-    read -a fence_variants <<< "$(sed -n '6p' $test_file)"
-  fi
+  read -a variants <<< "$(sed -n '3p' $test_file)"
 
   test="${test_info[0]}"
 
   # build binaries
   for tb in ${threadblocks[@]}; do
-    for scope in ${scopes[@]}; do
-      for variant in ${variants[@]}; do
-        echo "Compiling $test-$tb-$scope-NO_FENCE-$variant runner"
-  	    nvcc -D$tb -D$scope -D$variant -I. -rdc=true -arch sm_80 runner.cu "kernels/$test.cu" -o "$TARGET_DIR/$test-$tb-$scope-NO_FENCE-$variant-runner"
-      done
-      if [[ $(wc -l < $test_file) -ge 5 ]]; then
-        for f_scope in ${fence_scopes[@]}; do
-          for f_variant in ${fence_variants[@]}; do
-            echo "Compiling $test-$tb-$scope-$f_scope-$f_variant runner"
-  	        nvcc -D$tb -D$scope -D$f_scope -D$f_variant -I. -rdc=true -arch sm_80 runner.cu "kernels/$test.cu" -o "$TARGET_DIR/$test-$tb-$scope-$f_scope-$f_variant-runner"
-          done
-        done
-      fi
+    for variant in ${variants[@]}; do
+      echo "Compiling $test-$tb-$variant runner"
+        nvcc -D$tb -D$variant -I. -rdc=true -arch sm_86 runner.cu "kernels/$test.cu" -o "$TARGET_DIR/$test-$tb-$variant-runner"
     done
   done
 done
@@ -153,28 +133,14 @@ do
   for test_file in "${test_files[@]}"; do
     read -a test_info <<< "$(sed -n '1p' $test_file)"
     read -a threadblocks <<< "$(sed -n '2p' $test_file)"
-    read -a scopes <<< "$(sed -n '3p' $test_file)"
-    read -a variants <<< "$(sed -n '4p' $test_file)"
-    if [[ $(wc -l < $test_file) -ge 5 ]]; then
-      read -a fence_scopes <<< "$(sed -n '5p' $test_file)"
-      read -a fence_variants <<< "$(sed -n '6p' $test_file)"
-    fi
+    read -a variants <<< "$(sed -n '3p' $test_file)"
 
     test="${test_info[0]}"
     params="${test_info[1]}"
 
     for tb in ${threadblocks[@]}; do
-      for scope in ${scopes[@]}; do
-        for variant in ${variants[@]}; do
-          run_test $test $tb $scope NO_FENCE $variant $params
-        done
-        if [[ $(wc -l < $test_file) -ge 5 ]]; then
-          for f_scope in ${fence_scopes[@]}; do
-            for f_variant in ${fence_variants[@]}; do
-              run_test $test $tb $scope $f_scope $f_variant $params
-            done
-          done
-        fi
+      for variant in ${variants[@]}; do
+        run_test $test $tb $variant $params
       done
     done
   done

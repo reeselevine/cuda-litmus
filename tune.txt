@@ -1,7 +1,1 @@
-tuning-files/paper-example.txt
-tuning-files/iriw.txt
 tuning-files/wrc.txt
-tuning-files/isa2.txt
-tuning-files/rwc.txt
-tuning-files/wwc.txt
-tuning-files/wrw+2w.txt
