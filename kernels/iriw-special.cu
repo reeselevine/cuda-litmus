@@ -48,13 +48,13 @@ __global__ void litmus_test(
 
       uint r0 = test_locations[x_1].load(cuda::memory_order_relaxed); // read x
       cuda::atomic_thread_fence(cuda::memory_order_seq_cst, cuda::thread_scope_block);
-      uint r1 = test_locations[y_1].load(cuda::memory_order_relaxed); // read y
+      uint r1 = test_locations[y_1].load(cuda::memory_order_acquire); // read y
 
       test_locations[y_2].store(1, cuda::memory_order_release); // write y
 
       uint r2 = test_locations[y_3].load(cuda::memory_order_relaxed); // read y
       cuda::atomic_thread_fence(cuda::memory_order_seq_cst, cuda::thread_scope_block);
-      uint r3 = test_locations[x_3].load(cuda::memory_order_relaxed); // read x
+      uint r3 = test_locations[x_3].load(cuda::memory_order_acquire); // read x
 
       cuda::atomic_thread_fence(cuda::memory_order_seq_cst);
       read_results[wg_offset + id_1].r0 = r0;

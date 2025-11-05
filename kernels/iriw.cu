@@ -38,8 +38,8 @@ __global__ void litmus_test(
 #elif defined(BOTH_FENCE)
     cuda::memory_order thread_1_order = cuda::memory_order_relaxed;
     cuda::memory_order thread_3_order = cuda::memory_order_relaxed;
-    #define FENCE_1() cuda::atomic_thread_fence(cuda::memory_order_acq_rel, FENCE_SCOPE);
-    #define FENCE_3() cuda::atomic_thread_fence(cuda::memory_order_acq_rel, FENCE_SCOPE);
+    #define FENCE_1() cuda::atomic_thread_fence(cuda::memory_order_seq_cst, FENCE_SCOPE);
+    #define FENCE_3() cuda::atomic_thread_fence(cuda::memory_order_seq_cst, FENCE_SCOPE);
 #elif defined(RELAXED)
     cuda::memory_order thread_1_order = cuda::memory_order_relaxed;
     cuda::memory_order thread_3_order = cuda::memory_order_relaxed;

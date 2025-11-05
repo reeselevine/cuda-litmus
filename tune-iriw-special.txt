@@ -1,1 +1,1 @@
-tuning-files/iriw-special.txt
+tuning-files/iriw-cta-fence-sc.txt

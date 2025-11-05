@@ -1,4 +1,4 @@
-iriw 2-loc.txt
+iriw-special 2-loc.txt
 TB_01_23
 SCOPE_SYSTEM SCOPE_DEVICE
 DEFAULT
